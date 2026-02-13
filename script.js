@@ -41,6 +41,35 @@ function loadDashboards() {
     } else {
         dashboards = [{ ...DEFAULT_DASHBOARD }];
     }
+
+    // Normalize dashboard schema + migrate legacy global data only to first dashboard.
+    const legacyData = {
+        favorites: JSON.parse(localStorage.getItem('bento_favs') || '[]'),
+        playlist: JSON.parse(localStorage.getItem('bento_playlist') || '[]'),
+        readings: JSON.parse(localStorage.getItem('bento_readings') || '[]'),
+        resources: JSON.parse(localStorage.getItem('bento_resources') || '[]')
+    };
+
+    dashboards = dashboards.map((dashboard, index) => {
+        const data = dashboard.data || {};
+        return {
+            ...dashboard,
+            data: {
+                favorites: Array.isArray(data.favorites)
+                    ? data.favorites
+                    : (index === 0 ? legacyData.favorites : []),
+                playlist: Array.isArray(data.playlist)
+                    ? data.playlist
+                    : (index === 0 ? legacyData.playlist : []),
+                readings: Array.isArray(data.readings)
+                    ? data.readings
+                    : (index === 0 ? legacyData.readings : []),
+                resources: Array.isArray(data.resources)
+                    ? data.resources
+                    : (index === 0 ? legacyData.resources : [])
+            }
+        };
+    });
     
     // Load current dashboard ID
     currentDashboardId = localStorage.getItem('bento_current_dashboard') || dashboards[0].id;
@@ -529,7 +558,6 @@ function renderFavs() {
         container.appendChild(item);
     });
     
-    localStorage.setItem("bento_favs", JSON.stringify(favorites));
     saveCurrentDashboardData(); // Save to current dashboard
 }
 
@@ -595,8 +623,6 @@ function handleDrop(e) {
     });
     
     favorites = newOrder;
-    localStorage.setItem("bento_favs", JSON.stringify(favorites));
-    
     return false;
 }
 
@@ -657,7 +683,6 @@ function renderPlaylist() {
             <a href="${item.url}" target="_blank" class="list-link-text">${item.name}</a>
         </div>`).join("");
     
-    localStorage.setItem("bento_playlist", JSON.stringify(playlist));
     saveCurrentDashboardData(); // Save to current dashboard
 }
 
@@ -686,7 +711,6 @@ function renderReadings() {
             <a href="${item.url}" target="_blank" class="list-link-text">${item.name}</a>
         </div>`).join("");
     
-    localStorage.setItem("bento_readings", JSON.stringify(readings));
     saveCurrentDashboardData(); // Save to current dashboard
 }
 
@@ -718,7 +742,6 @@ function renderResources() {
             <a href="${item.url}" target="_blank" class="list-link-text">${item.name}</a>
         </div>`).join("");
     
-    localStorage.setItem("bento_resources", JSON.stringify(resources));
     saveCurrentDashboardData(); // Save to current dashboard
 }
 
