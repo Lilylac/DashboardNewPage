@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bento Mocha Dashboard</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="container">
+        <!-- Dashboard Switcher Header -->
+        <div class="dashboard-header">
+            <div class="dashboard-tabs" id="dashboardTabs">
+                <!-- Tabs will be rendered by JS -->
+            </div>
+        
+        </div>
+
+        <!-- Dashboard Content Wrapper -->
+        <div class="dashboard-content" id="dashboardContent">
+            <!-- LEFT COLUMN -->
+        <div style="display: flex; flex-direction: column; gap: var(--gap)">
+            <!-- Calendar -->
+            <div class="card">
+                <div class="calendar-header">
+                    <button class="btn-nav" onclick="moveMonth(-1)">‹</button>
+                    <span id="cal-month-year" style="font-weight: bold; font-size: 0.9rem">Februari 2026</span>
+                    <button class="btn-nav" onclick="moveMonth(1)">›</button>
+                </div>
+                <div class="calendar-grid" id="calendar-body"></div>
+            </div>
+
+            <!-- Learning Resources -->
+            <div class="card" style="flex-grow: 1">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h2 style="color: var(--lavender); margin: 0">📚 Learning Resources</h2>
+                </div>
+                <div id="resources-container" style="overflow-y: auto; max-height: 250px"></div>
+            </div>
+        </div>
+
+        <!-- CENTER COLUMN - Shortcuts -->
+        <div class="card main-fav">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Shortcut</h2>
+
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="addFav()" class="btn-action" title="Tambah Shortcut">
+                        + Add
+                    </button>
+                    <button onclick="openSettings()" class="btn-secondary" title="Settings">
+                        ⚙
+                    </button>
+                    <button onclick="exportData()" class="btn-secondary" title="Export Data">
+                        Export
+                    </button>
+                </div>
+            </div>
+            <div class="fav-grid" id="fav-container"></div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div style="display: flex; flex-direction: column; gap: var(--gap)">
+            <!-- Todo List -->
+            <div class="card" style="height: 450px">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 id="todo-date-label" style="margin: 0">Hari Ini</h2>
+                </div>
+                <div class="todo-list" id="todo-container"></div>
+            </div>
+
+            <!-- Playlist -->
+            <div class="card" style="flex-grow: 1">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h2 style="color: var(--green); margin: 0">Playlist</h2>
+                </div>
+                <div id="playlist-container" style="overflow-y: auto; max-height: 200px"></div>
+            </div>
+
+            <!-- Reading Materials -->
+            <div class="card" style="flex-grow: 1">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h2 style="color: var(--mauve); margin: 0">Reading Material</h2>
+                </div>
+                <div id="reading-container" style="overflow-y: auto; max-height: 200px"></div>
+            </div>
+        </div>
+
+        <!-- QUOTE CARD (Bottom) -->
+        <div class="card quote-card">
+            <p id="quote-text" style="font-style: italic; opacity: 0.9">
+                "Loading inspiration..."
+            </p>
+        </div>
+        </div>
+        <!-- End Dashboard Content -->
+    </div>
+    <!-- End Container -->
+
+    <!-- MODAL: Dashboard Manager -->
+    <div id="dashboardManagerModal" class="modal-overlay" style="display: none"
+        onclick="if (event.target == this) closeDashboardManager();">
+        <div class="card modal-content" style="width: 400px;">
+            <h2 style="margin-top: 0; color: var(--mauve); margin-bottom: 20px;">📑 Manage Dashboards</h2>
+
+            <div id="dashboardList" class="dashboard-manager-list">
+                <!-- Dashboard items will be rendered here -->
+            </div>
+
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--surface0);">
+                <button onclick="addDashboard(); closeDashboardManager();" class="btn-action" style="width: 100%;">
+                    + New Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Todo Calendar View -->
+    <div id="todoModal" class="modal-overlay" style="display: none"
+        onclick="if (event.target == this) closeTodoModal();">
+        <div class="card modal-content" style="width: 350px; border-radius: 20px">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div>
+                    <small style="color: var(--mauve); font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+                        Jadwal Tanggal
+                    </small>
+                    <h2 id="todoModalTitle" style="margin: 0; font-size: 1.2rem"></h2>
+                </div>
+            </div>
+            <div id="todoModalList" style="max-height: 300px; overflow-y: auto"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: Generic Input (Fav, Playlist, Reading, Todo) -->
+    <div id="customModal" class="modal-overlay" style="display: none" onclick="if (event.target == this) closeModal();">
+        <div class="card modal-content">
+            <h2 id="modalTitle">+</h2>
+            <input type="text" id="modalInput1" class="todo-input" placeholder="Nama/Judul" />
+            <input type="text" id="modalInput2" class="todo-input" placeholder="URL/Link (jika ada)" />
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                <button id="modalConfirmBtn" class="btn-action">
+                    Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Settings -->
+    <div id="settingsModal" class="modal-overlay" style="display: none"
+        onclick="if (event.target == this) closeSettings();">
+        <div class="card modal-content" style="width: 500px; max-height: 80vh; overflow-y: auto;">
+            <h2 style="margin-top: 0; color: var(--mauve); margin-bottom: 20px;">⚙️ Dashboard Settings</h2>
+
+            <!-- Theme Selection -->
+            <div class="settings-section">
+                <label class="settings-label">🎨 Theme</label>
+                <div class="theme-grid">
+                    <button class="theme-option" data-theme="mocha" onclick="changeTheme('mocha')">
+                        <div class="theme-preview mocha-preview"></div>
+                        <span>Mocha</span>
+                    </button>
+                    <button class="theme-option" data-theme="macchiato" onclick="changeTheme('macchiato')">
+                        <div class="theme-preview macchiato-preview"></div>
+                        <span>Macchiato</span>
+                    </button>
+                    <button class="theme-option" data-theme="frappe" onclick="changeTheme('frappe')">
+                        <div class="theme-preview frappe-preview"></div>
+                        <span>Frappé</span>
+                    </button>
+                    <button class="theme-option" data-theme="latte" onclick="changeTheme('latte')">
+                        <div class="theme-preview latte-preview"></div>
+                        <span>Latte</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Blur Intensity -->
+            <div class="settings-section">
+                <label class="settings-label">
+                    💫 Blur Intensity
+                    <span id="blurValue" style="color: var(--subtext); font-weight: normal;">15px</span>
+                </label>
+                <input type="range" id="blurSlider" class="settings-slider" 
+                       min="0" max="30" value="15" step="1"
+                       oninput="updateBlur(this.value)">
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--subtext); margin-top: 4px;">
+                    <span>None</span>
+                    <span>Max</span>
+                </div>
+            </div>
+
+            <!-- Font Size -->
+            <div class="settings-section">
+                <label class="settings-label">📝 Font Size</label>
+                <div class="font-size-options">
+                    <button class="font-option" data-size="small" onclick="changeFontSize('small')">
+                        <span style="font-size: 0.875rem;">Aa</span>
+                        <span>Small</span>
+                    </button>
+                    <button class="font-option active" data-size="medium" onclick="changeFontSize('medium')">
+                        <span style="font-size: 1rem;">Aa</span>
+                        <span>Medium</span>
+                    </button>
+                    <button class="font-option" data-size="large" onclick="changeFontSize('large')">
+                        <span style="font-size: 1.125rem;">Aa</span>
+                        <span>Large</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Accent Color (Future) -->
+            <div class="settings-section">
+                <label class="settings-label">🎨 Accent Color</label>
+                <div class="accent-colors">
+                    <button class="accent-option" data-color="mauve" onclick="changeAccent('mauve')" style="background: #cba6f7;"></button>
+                    <button class="accent-option" data-color="blue" onclick="changeAccent('blue')" style="background: #89b4fa;"></button>
+                    <button class="accent-option" data-color="green" onclick="changeAccent('green')" style="background: #a6e3a1;"></button>
+                    <button class="accent-option" data-color="red" onclick="changeAccent('red')" style="background: #f38ba8;"></button>
+                    <button class="accent-option" data-color="yellow" onclick="changeAccent('yellow')" style="background: #f9e2af;"></button>
+                </div>
+            </div>
+
+            <!-- Background Image -->
+            <div class="settings-section">
+                <label class="settings-label">🖼️ Background Image</label>
+                <input type="text" id="bgInput" class="todo-input" placeholder="Enter image URL (https://...)">
+                <small style="color: var(--subtext); display: block; margin-top: 8px;">Leave empty for default gradient</small>
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--surface0);">
+                <button onclick="resetSettings()" class="btn-secondary">Reset to Default</button>
+                <button onclick="saveSettings()" class="btn-action">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
