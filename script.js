@@ -114,6 +114,7 @@ function loadDashboards() {
                     ? data.resources
                     : (index === 0 ? legacyData.resources : []),
                 layout: normalizeLayout(data.layout)
+                    : (index === 0 ? legacyData.resources : [])
             }
         };
     });
