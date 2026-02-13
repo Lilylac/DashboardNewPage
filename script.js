@@ -12,6 +12,52 @@ let currentViewDate = new Date();
 let selectedDate = new Date();
 selectedDate.setHours(12, 0, 0, 0);
 
+
+const WIDGET_LABELS = {
+    calendar: 'Calendar',
+    shortcuts: 'Shortcuts',
+    todos: 'Todos',
+    resources: 'Resources',
+    playlist: 'Playlist',
+    reading: 'Reading',
+    quote: 'Quote'
+};
+
+const DEFAULT_WIDGET_LAYOUT = [
+    { id: 'calendar', visible: true, w: 3, h: 2, order: 1 },
+    { id: 'shortcuts', visible: true, w: 6, h: 4, order: 2 },
+    { id: 'todos', visible: true, w: 3, h: 3, order: 3 },
+    { id: 'resources', visible: true, w: 3, h: 2, order: 4 },
+    { id: 'playlist', visible: true, w: 3, h: 2, order: 5 },
+    { id: 'reading', visible: true, w: 3, h: 2, order: 6 },
+    { id: 'quote', visible: true, w: 12, h: 1, order: 7 }
+];
+
+function getDefaultLayout() {
+    return DEFAULT_WIDGET_LAYOUT.map(item => ({ ...item }));
+}
+
+function normalizeLayout(layout) {
+    const source = Array.isArray(layout) ? layout : [];
+    const defaults = getDefaultLayout();
+    const layoutMap = new Map(source.map(item => [item.id, item]));
+
+    return defaults.map(defaultItem => {
+        const custom = layoutMap.get(defaultItem.id) || {};
+        const width = parseInt(custom.w, 10);
+        const height = parseInt(custom.h, 10);
+        const order = parseInt(custom.order, 10);
+
+        return {
+            id: defaultItem.id,
+            visible: typeof custom.visible === 'boolean' ? custom.visible : defaultItem.visible,
+            w: [3, 6, 12].includes(width) ? width : defaultItem.w,
+            h: [1, 2, 3, 4].includes(height) ? height : defaultItem.h,
+            order: Number.isFinite(order) ? order : defaultItem.order
+        };
+    }).sort((a, b) => a.order - b.order).map((item, idx) => ({ ...item, order: idx + 1 }));
+}
+
 // ============================================
 // MULTI-DASHBOARD SYSTEM
 // ============================================
@@ -41,6 +87,36 @@ function loadDashboards() {
     } else {
         dashboards = [{ ...DEFAULT_DASHBOARD }];
     }
+
+    // Normalize dashboard schema + migrate legacy global data only to first dashboard.
+    const legacyData = {
+        favorites: JSON.parse(localStorage.getItem('bento_favs') || '[]'),
+        playlist: JSON.parse(localStorage.getItem('bento_playlist') || '[]'),
+        readings: JSON.parse(localStorage.getItem('bento_readings') || '[]'),
+        resources: JSON.parse(localStorage.getItem('bento_resources') || '[]')
+    };
+
+    dashboards = dashboards.map((dashboard, index) => {
+        const data = dashboard.data || {};
+        return {
+            ...dashboard,
+            data: {
+                favorites: Array.isArray(data.favorites)
+                    ? data.favorites
+                    : (index === 0 ? legacyData.favorites : []),
+                playlist: Array.isArray(data.playlist)
+                    ? data.playlist
+                    : (index === 0 ? legacyData.playlist : []),
+                readings: Array.isArray(data.readings)
+                    ? data.readings
+                    : (index === 0 ? legacyData.readings : []),
+                resources: Array.isArray(data.resources)
+                    ? data.resources
+                    : (index === 0 ? legacyData.resources : []),
+                layout: normalizeLayout(data.layout)
+            }
+        };
+    });
     
     // Load current dashboard ID
     currentDashboardId = localStorage.getItem('bento_current_dashboard') || dashboards[0].id;
@@ -90,7 +166,8 @@ function addDashboard() {
             favorites: [],
             playlist: [],
             readings: [],
-            resources: []
+            resources: [],
+            layout: getDefaultLayout()
         }
     };
     
@@ -191,24 +268,132 @@ function closeDashboardManager() {
 
 function loadCurrentDashboardData() {
     const dashboard = getCurrentDashboard();
+    dashboard.data.layout = normalizeLayout(dashboard.data.layout);
     favorites = [...(dashboard.data.favorites || [])];
     playlist = [...(dashboard.data.playlist || [])];
     readings = [...(dashboard.data.readings || [])];
     resources = [...(dashboard.data.resources || [])];
+    applyDashboardLayout();
     renderAll();
 }
 
 function saveCurrentDashboardData() {
     const dashboard = getCurrentDashboard();
     if (!dashboard) return;
-    
+
     dashboard.data = {
         favorites: [...favorites],
         playlist: [...playlist],
         readings: [...readings],
-        resources: [...resources]
+        resources: [...resources],
+        layout: normalizeLayout(dashboard.data.layout)
     };
     saveDashboards();
+}
+
+
+function applyDashboardLayout() {
+    const dashboard = getCurrentDashboard();
+    if (!dashboard?.data) return;
+
+    dashboard.data.layout = normalizeLayout(dashboard.data.layout);
+    const sorted = [...dashboard.data.layout].sort((a, b) => a.order - b.order);
+
+    sorted.forEach(widget => {
+        const el = document.querySelector(`[data-widget-id="${widget.id}"]`);
+        if (!el) return;
+
+        el.style.display = widget.visible ? 'flex' : 'none';
+        el.style.gridColumn = `span ${widget.w}`;
+        el.style.gridRow = `span ${widget.h}`;
+        el.style.order = widget.order;
+    });
+}
+
+function openLayoutManager() {
+    const modal = document.getElementById('layoutManagerModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    renderLayoutManager();
+}
+
+function closeLayoutManager() {
+    const modal = document.getElementById('layoutManagerModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function renderLayoutManager() {
+    const container = document.getElementById('layoutWidgetList');
+    const dashboard = getCurrentDashboard();
+    if (!container || !dashboard?.data) return;
+
+    dashboard.data.layout = normalizeLayout(dashboard.data.layout);
+    const widgets = [...dashboard.data.layout].sort((a, b) => a.order - b.order);
+
+    container.innerHTML = widgets.map((widget, idx) => `
+        <div class="layout-widget-item">
+            <div class="layout-widget-name">${WIDGET_LABELS[widget.id] || widget.id}</div>
+            <select onchange="updateWidgetLayout('${widget.id}', 'w', this.value)">
+                <option value="3" ${widget.w === 3 ? 'selected' : ''}>Width S</option>
+                <option value="6" ${widget.w === 6 ? 'selected' : ''}>Width M</option>
+                <option value="12" ${widget.w === 12 ? 'selected' : ''}>Width L</option>
+            </select>
+            <select onchange="updateWidgetLayout('${widget.id}', 'h', this.value)">
+                <option value="1" ${widget.h === 1 ? 'selected' : ''}>Height S</option>
+                <option value="2" ${widget.h === 2 ? 'selected' : ''}>Height M</option>
+                <option value="3" ${widget.h === 3 ? 'selected' : ''}>Height L</option>
+                <option value="4" ${widget.h === 4 ? 'selected' : ''}>Height XL</option>
+            </select>
+            <button onclick="moveWidgetOrder('${widget.id}', ${idx > 0 ? -1 : 0})">↑</button>
+            <label class="widget-toggle">
+                <input type="checkbox" ${widget.visible ? 'checked' : ''} onchange="toggleWidget('${widget.id}', this.checked)"> Show
+            </label>
+            <button onclick="moveWidgetOrder('${widget.id}', ${idx < widgets.length - 1 ? 1 : 0})">↓</button>
+        </div>
+    `).join('');
+}
+
+function updateWidgetLayout(widgetId, key, value) {
+    const dashboard = getCurrentDashboard();
+    if (!dashboard?.data?.layout) return;
+    const widget = dashboard.data.layout.find(w => w.id === widgetId);
+    if (!widget) return;
+
+    widget[key] = parseInt(value, 10);
+    dashboard.data.layout = normalizeLayout(dashboard.data.layout);
+    applyDashboardLayout();
+    saveCurrentDashboardData();
+}
+
+function toggleWidget(widgetId, visible) {
+    const dashboard = getCurrentDashboard();
+    if (!dashboard?.data?.layout) return;
+    const widget = dashboard.data.layout.find(w => w.id === widgetId);
+    if (!widget) return;
+
+    widget.visible = Boolean(visible);
+    applyDashboardLayout();
+    saveCurrentDashboardData();
+}
+
+function moveWidgetOrder(widgetId, direction) {
+    if (!direction) return;
+    const dashboard = getCurrentDashboard();
+    if (!dashboard?.data?.layout) return;
+
+    const widgets = [...dashboard.data.layout].sort((a, b) => a.order - b.order);
+    const index = widgets.findIndex(w => w.id === widgetId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= widgets.length) return;
+
+    const temp = widgets[index].order;
+    widgets[index].order = widgets[nextIndex].order;
+    widgets[nextIndex].order = temp;
+
+    dashboard.data.layout = normalizeLayout(widgets);
+    applyDashboardLayout();
+    saveCurrentDashboardData();
+    renderLayoutManager();
 }
 
 // Legacy compatibility - redirect to dashboard data
@@ -312,6 +497,7 @@ function setupEnterKeyHandlers() {
 // RENDER ALL COMPONENTS
 // ============================================
 function renderAll() {
+    applyDashboardLayout();
     renderCalendar();
     renderTodos();
     renderFavs();
@@ -529,7 +715,6 @@ function renderFavs() {
         container.appendChild(item);
     });
     
-    localStorage.setItem("bento_favs", JSON.stringify(favorites));
     saveCurrentDashboardData(); // Save to current dashboard
 }
 
@@ -595,8 +780,6 @@ function handleDrop(e) {
     });
     
     favorites = newOrder;
-    localStorage.setItem("bento_favs", JSON.stringify(favorites));
-    
     return false;
 }
 
@@ -657,7 +840,6 @@ function renderPlaylist() {
             <a href="${item.url}" target="_blank" class="list-link-text">${item.name}</a>
         </div>`).join("");
     
-    localStorage.setItem("bento_playlist", JSON.stringify(playlist));
     saveCurrentDashboardData(); // Save to current dashboard
 }
 
@@ -686,7 +868,6 @@ function renderReadings() {
             <a href="${item.url}" target="_blank" class="list-link-text">${item.name}</a>
         </div>`).join("");
     
-    localStorage.setItem("bento_readings", JSON.stringify(readings));
     saveCurrentDashboardData(); // Save to current dashboard
 }
 
@@ -718,7 +899,6 @@ function renderResources() {
             <a href="${item.url}" target="_blank" class="list-link-text">${item.name}</a>
         </div>`).join("");
     
-    localStorage.setItem("bento_resources", JSON.stringify(resources));
     saveCurrentDashboardData(); // Save to current dashboard
 }
 

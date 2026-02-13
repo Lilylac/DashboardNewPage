@@ -267,13 +267,17 @@ body {
 /* Dashboard Content Wrapper */
 .dashboard-content {
   display: grid;
-  grid-template-columns: 320px 1fr 320px;
-  grid-template-rows: 1fr 80px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(110px, auto);
   gap: var(--gap);
   opacity: 1;
   transform: translateY(0);
   transition: opacity var(--transition-base), 
               transform var(--transition-base);
+}
+
+.dashboard-widget {
+  min-height: 120px;
 }
 
 .dashboard-content.transitioning {
@@ -507,7 +511,7 @@ h2 {
    SHORTCUTS / FAVORITES (DRAG & DROP)
    ============================================ */
 .main-fav {
-  grid-area: 1 / 2 / 2 / 3;
+  min-height: 380px;
 }
 
 .fav-grid {
@@ -783,7 +787,6 @@ h2 {
    QUOTE CARD
    ============================================ */
 .quote-card {
-  grid-area: 2 / 1 / 3 / 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1082,4 +1085,57 @@ h2 {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--mauve);
+}
+
+/* Layout manager */
+.layout-widget-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.layout-widget-item {
+  background: var(--surface0);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.layout-widget-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.layout-widget-item select,
+.layout-widget-item button,
+.layout-widget-item label {
+  font-size: 0.75rem;
+}
+
+.layout-widget-item select {
+  background: var(--mantle);
+  color: var(--text);
+  border: 1px solid var(--surface1);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.layout-widget-item button {
+  background: var(--surface1);
+  border: none;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.layout-widget-item .widget-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--subtext);
 }
